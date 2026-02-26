@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS POS — Phase 1 Preview</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+:root {
+  --black:#080808;--deep:#0d0d0d;--surface:#141414;--panel:#1a1a1a;--elevated:#222;
+  --gold:#c9a84c;--gold-bright:#f0c040;--gold-dim:#7a6020;--gold-glow:rgba(201,168,76,0.15);--gold-subtle:rgba(201,168,76,0.06);
+  --text:#e8e0cc;--muted:#666;--border:rgba(255,255,255,0.06);--border-gold:rgba(201,168,76,0.25);
+  --success:#2ecc71;--warning:#f39c12;--danger:#e74c3c;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#050505;color:var(--text);font-family:'DM Mono',monospace;overflow-x:hidden;}
+
+/* LAYOUT */
+.outer{display:flex;flex-direction:column;align-items:center;padding:40px 20px 80px;}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;letter-spacing:-1px;color:var(--text);text-align:center;margin-bottom:8px;}
+.page-sub{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:48px;}
+
+/* PHONE FRAMES */
+.phones{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;align-items:flex-start;margin-bottom:60px;}
+.phone-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;}
+.phone-label{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.phone{
+  width:280px;height:560px;
+  border-radius:40px;
+  background:var(--black);
+  border:2px solid rgba(201,168,76,0.3);
+  overflow:hidden;position:relative;
+  box-shadow:0 40px 80px rgba(0,0,0,0.8),0 0 0 1px rgba(201,168,76,0.1),inset 0 1px 0 rgba(201,168,76,0.15);
+  flex-shrink:0;
+  transition:transform 0.3s ease,box-shadow 0.3s ease;
+}
+.phone:hover{transform:translateY(-6px);box-shadow:0 56px 100px rgba(0,0,0,0.9),0 0 40px rgba(201,168,76,0.15),0 0 0 1px rgba(201,168,76,0.3);}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:26px;background:#000;border-radius:0 0 16px 16px;z-index:20;}
+.screen{width:100%;height:100%;overflow:hidden;position:relative;}
+
+/* PARTICLES */
+canvas.pcv{position:absolute;inset:0;pointer-events:none;z-index:0;}
+
+/* LOGIN SCREEN */
+.login-screen{background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:20px;position:relative;}
+.login-card{width:100%;background:var(--surface);border:1px solid var(--border-gold);border-radius:16px;padding:28px 22px;position:relative;z-index:1;box-shadow:0 16px 40px rgba(0,0,0,0.5);}
+.logo-ring{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(201,168,76,0.5);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;background:rgba(201,168,76,0.05);}
+.logo-ring svg{display:block;}
+.app-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;letter-spacing:2px;text-align:center;margin-bottom:4px;}
+.app-title span{background:linear-gradient(135deg,#7a6020,#c9a84c,#f0c040);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.tagline{font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:22px;}
+.inp-lbl{font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:block;}
+.inp-mock{background:var(--panel);border:1px solid var(--border);border-radius:4px;height:36px;margin-bottom:12px;padding:0 12px;display:flex;align-items:center;}
+.inp-mock span{font-size:11px;color:var(--muted);}
+.btn-gld{background:linear-gradient(135deg,#7a6020,#c9a84c,#f0c040,#c9a84c);border-radius:4px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.2s;}
+.btn-gld span{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#080808;}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);margin:14px 0;}
+.link-row{text-align:center;font-size:10px;color:var(--muted);}
+.link-row a{color:var(--gold);text-decoration:none;}
+
+/* HOME SCREEN */
+.home-screen{background:var(--black);height:100%;overflow-y:auto;position:relative;padding-bottom:60px;}
+.home-screen::-webkit-scrollbar{display:none;}
+.home-hdr{padding:18px 16px 0;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:5;}
+.greeting-sm{font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.greeting-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;letter-spacing:1px;margin-top:2px;}
+.icon-btn{width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--gold);}
+.home-body{padding:14px 16px;position:relative;z-index:5;}
+.hero-card{background:linear-gradient(135deg,rgba(201,168,76,0.08),transparent);border:1px solid var(--border-gold);border-radius:10px;padding:20px 18px;margin-bottom:14px;animation:glowPulse 3s ease-in-out infinite;}
+.period-tabs{display:flex;gap:2px;margin-bottom:14px;}
+.ptab{font-family:'Syne',sans-serif;font-size:7px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;background:transparent;border:none;cursor:pointer;color:var(--muted);border-bottom:1px solid transparent;transition:all 200ms;}
+.ptab.act{color:var(--gold);border-bottom-color:var(--gold);background:rgba(201,168,76,0.05);}
+.rev-label{font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.rev-amount{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;color:var(--gold);line-height:1;margin-bottom:4px;}
+.rev-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.stat-card{border-radius:8px;padding:12px;}
+.stat-lbl{font-family:'Syne',sans-serif;font-size:7px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;opacity:.8;}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;}
+.section-title{font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.action-btn{border-radius:8px;padding:14px 12px;cursor:pointer;border:none;text-align:left;transition:all 200ms;}
+.action-btn.primary{background:linear-gradient(135deg,#7a6020,#c9a84c,#f0c040,#c9a84c);color:#080808;}
+.action-btn.ghost{background:var(--surface);border:1px solid var(--border);color:var(--text);}
+.action-icon{font-size:18px;margin-bottom:6px;}
+.action-lbl{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.txn-list{display:flex;flex-direction:column;gap:2px;}
+.txn-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;}
+.txn-name{font-family:'DM Mono',monospace;font-size:11px;color:var(--text);margin-bottom:2px;}
+.txn-date{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);}
+.txn-amt{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text);margin-bottom:3px;text-align:right;}
+.status-badge{font-family:'Syne',sans-serif;font-size:7px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:2px;}
+
+/* SETTINGS SCREEN */
+.settings-screen{background:var(--black);height:100%;overflow-y:auto;padding-bottom:60px;}
+.settings-screen::-webkit-scrollbar{display:none;}
+.settings-hdr{padding:18px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.s-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;letter-spacing:1px;}
+.settings-body{padding:12px 14px;}
+.profile-strip{background:linear-gradient(135deg,rgba(201,168,76,0.08),transparent);border:1px solid var(--border-gold);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7a6020,#c9a84c);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#080808;flex-shrink:0;}
+.profile-name{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.profile-email{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);}
+.setting-section{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;}
+.section-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.s-section-title{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);}
+.section-body{padding:14px;}
+.field-row{margin-bottom:10px;}
+.field-lbl{font-family:'Syne',sans-serif;font-size:7px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;display:block;}
+.field-inp{background:var(--panel);border:1px solid var(--border);border-radius:4px;height:30px;padding:0 10px;width:100%;display:flex;align-items:center;}
+.field-inp span{font-size:10px;color:var(--muted);}
+.gateway-row{border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;transition:border-color 200ms;}
+.gateway-row.on{border-color:var(--border-gold);background:var(--gold-subtle);}
+.gw-logo{font-size:16px;}
+.gw-name{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--text);flex:1;}
+.toggle{width:36px;height:20px;border-radius:10px;position:relative;cursor:pointer;transition:background 250ms;flex-shrink:0;}
+.toggle-knob{position:absolute;top:2px;width:14px;height:14px;border-radius:50%;transition:left 250ms;}
+
+/* BOTTOM NAV */
+.bottom-nav{position:absolute;bottom:0;left:0;right:0;height:56px;background:var(--deep);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;z-index:20;}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;}
+.nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;}
+.nav-lbl{font-family:'Syne',sans-serif;font-size:7px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;}
+.nav-center{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:-18px;border:2px solid;transition:all 250ms;}
+
+/* ANIMATIONS */
+@keyframes glowPulse{0%,100%{box-shadow:0 0 10px rgba(201,168,76,0.1)}50%{box-shadow:0 0 24px rgba(201,168,76,0.3)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.float{animation:float 3s ease-in-out infinite;}
+
+/* FEATURE LIST */
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:2px;max-width:900px;width:100%;margin-bottom:60px;}
+.feat-card{background:var(--surface);border:1px solid var(--border);padding:24px;transition:all 250ms;}
+.feat-card:hover{border-color:var(--border-gold);background:var(--panel);}
+.feat-num{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:300;color:var(--gold-dim);line-height:1;margin-bottom:8px;}
+.feat-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+.feat-desc{font-size:11px;color:var(--muted);line-height:1.7;}
+.feat-files{margin-top:12px;display:flex;flex-direction:column;gap:3px;}
+.feat-file{font-size:10px;color:#444;font-family:'DM Mono',monospace;padding:3px 8px;background:var(--black);border-left:2px solid var(--gold-dim);}
+
+/* SECTION HDR */
+.sect{max-width:900px;width:100%;margin-bottom:16px;}
+.sect-lbl{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.sect-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--gold-dim),transparent);}
+
+/* NEXT BOX */
+.next-box{max-width:900px;width:100%;background:linear-gradient(135deg,rgba(201,168,76,0.06),transparent);border:1px solid var(--border-gold);border-radius:4px;padding:40px;text-align:center;}
+.next-title{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:300;color:var(--gold);margin-bottom:12px;}
+.next-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:2px;margin-top:28px;text-align:left;}
+.next-step{background:var(--surface);padding:18px;}
+.step-num{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--gold-dim);line-height:1;margin-bottom:6px;}
+.step-cmd{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);background:var(--black);padding:4px 8px;border-radius:2px;margin-bottom:6px;display:block;}
+.step-desc{font-size:10px;color:var(--muted);line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="outer">
+
+  <!-- TITLE -->
+  <h1 class="page-title">NEXUS <span style="background:linear-gradient(135deg,#7a6020,#c9a84c,#f0c040);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">POS</span></h1>
+  <p class="page-sub">Phase 1 — Live Preview · All Screens</p>
+
+  <!-- PHONES -->
+  <div class="phones">
+
+    <!-- LOGIN -->
+    <div class="phone-wrap">
+      <div class="phone float" style="animation-delay:0s">
+        <div class="notch"></div>
+        <div class="screen login-screen" id="loginScreen">
+          <canvas class="pcv" id="c1"></canvas>
+          <div class="login-card" style="animation:fadeUp 0.6s ease forwards;">
+            <div class="logo-ring">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div class="app-title">NEXUS <span>POS</span></div>
+            <div class="tagline">Sign in to your account</div>
+            <label class="inp-lbl">Email Address</label>
+            <div class="inp-mock"><span>owner@business.com</span></div>
+            <label class="inp-lbl">Password</label>
+            <div class="inp-mock"><span>••••••••</span></div>
+            <div class="btn-gld" style="margin-top:6px;"><span>Sign In</span></div>
+            <div class="divider"></div>
+            <div class="link-row">Don't have an account? <a href="#">Create one</a></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Login Screen</div>
+    </div>
+
+    <!-- HOME -->
+    <div class="phone-wrap">
+      <div class="phone float" style="animation-delay:0.3s">
+        <div class="notch"></div>
+        <div class="screen home-screen" id="homeScreen">
+          <canvas class="pcv" id="c2"></canvas>
+          <!-- Header -->
+          <div class="home-hdr">
+            <div>
+              <div class="greeting-sm">Good Morning</div>
+              <div class="greeting-name">Sipho 👋</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <div class="icon-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              </div>
+              <div class="icon-btn" style="position:relative;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span style="position:absolute;top:6px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--gold);border:1px solid var(--black);"></span>
+              </div>
+            </div>
+          </div>
+          <!-- Body -->
+          <div class="home-body">
+            <!-- Hero -->
+            <div class="hero-card">
+              <div class="period-tabs">
+                <div class="ptab act">Today</div>
+                <div class="ptab">Week</div>
+                <div class="ptab">Month</div>
+              </div>
+              <div class="rev-label">Revenue</div>
+              <div class="rev-amount">R 12,450</div>
+              <div class="rev-sub">8 paid transactions</div>
+            </div>
+            <!-- Stats -->
+            <div class="stats-row">
+              <div class="stat-card" style="background:rgba(243,156,18,0.08);border:1px solid rgba(243,156,18,0.2);">
+                <div class="stat-lbl" style="color:#f39c12;">Pending</div>
+                <div class="stat-val" style="color:#f39c12;">R 4,200</div>
+              </div>
+              <div class="stat-card" style="background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.2);">
+                <div class="stat-lbl" style="color:#2ecc71;">All-Time</div>
+                <div class="stat-val" style="color:#2ecc71;">R 89k</div>
+              </div>
+            </div>
+            <!-- Actions -->
+            <div class="section-title">Quick Actions</div>
+            <div class="actions-grid">
+              <div class="action-btn primary"><div class="action-icon">⚡</div><div class="action-lbl">Quick Sale</div></div>
+              <div class="action-btn ghost"><div class="action-icon">👤</div><div class="action-lbl">Client Sale</div></div>
+              <div class="action-btn ghost"><div class="action-icon">📦</div><div class="action-lbl">Inventory</div></div>
+              <div class="action-btn ghost"><div class="action-icon">📋</div><div class="action-lbl">Transactions</div></div>
+            </div>
+            <!-- Transactions -->
+            <div class="section-title">Recent</div>
+            <div class="txn-list">
+              <div class="txn-item">
+                <div><div class="txn-name">Sipho Ndlovu</div><div class="txn-date">Today · Yoco</div></div>
+                <div><div class="txn-amt">R 1,200</div><span class="status-badge" style="background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);color:#2ecc71;">Paid</span></div>
+              </div>
+              <div class="txn-item">
+                <div><div class="txn-name">Quick Sale</div><div class="txn-date">Today · Yoco</div></div>
+                <div><div class="txn-amt">R 850</div><span class="status-badge" style="background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.3);color:#f39c12;">Pending</span></div>
+              </div>
+              <div class="txn-item">
+                <div><div class="txn-name">Nomsa Dlamini</div><div class="txn-date">Yesterday · Stripe</div></div>
+                <div><div class="txn-amt">R 4,500</div><span class="status-badge" style="background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);color:#2ecc71;">Paid</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- Bottom Nav -->
+          <div class="bottom-nav">
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="nav-lbl" style="color:var(--gold);">Home</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="nav-lbl" style="color:var(--muted);">Quick</div></div>
+            <div class="nav-center" style="background:linear-gradient(135deg,#7a6020,#c9a84c);border-color:#c9a84c;color:#080808;box-shadow:0 0 16px rgba(201,168,76,0.4);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="nav-lbl" style="color:var(--muted);">Stock</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><div class="nav-lbl" style="color:var(--muted);">Settings</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Home Dashboard</div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="phone-wrap">
+      <div class="phone float" style="animation-delay:0.6s">
+        <div class="notch"></div>
+        <div class="screen settings-screen">
+          <canvas class="pcv" id="c3"></canvas>
+          <div class="settings-hdr" style="position:relative;z-index:5;">
+            <div class="s-title">Settings</div>
+            <div class="icon-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
+          </div>
+          <div class="settings-body" style="position:relative;z-index:5;">
+            <!-- Profile -->
+            <div class="profile-strip">
+              <div class="avatar">S</div>
+              <div>
+                <div class="profile-name">Sipho Ndlovu</div>
+                <div class="profile-email">sipho@business.com</div>
+              </div>
+              <span class="status-badge" style="background:var(--gold-glow);border:1px solid var(--border-gold);color:var(--gold);flex-shrink:0;">Admin</span>
+            </div>
+            <!-- Branding -->
+            <div class="setting-section">
+              <div class="section-hdr">
+                <div class="s-section-title">Business Branding</div>
+                <span class="status-badge" style="background:var(--gold-glow);border:1px solid var(--border-gold);color:var(--gold);">White-Label</span>
+              </div>
+              <div class="section-body">
+                <div class="field-row"><label class="field-lbl">Business Name</label><div class="field-inp"><span>Sipho's Supplies</span></div></div>
+                <div class="field-row"><label class="field-lbl">VAT Number</label><div class="field-inp"><span>4123456789</span></div></div>
+                <div style="height:32px;background:linear-gradient(135deg,#7a6020,#c9a84c);border-radius:4px;display:flex;align-items:center;justify-content:center;margin-top:4px;"><span style="font-family:'Syne',sans-serif;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#080808;">Save Branding</span></div>
+              </div>
+            </div>
+            <!-- Gateways -->
+            <div class="setting-section">
+              <div class="section-hdr"><div class="s-section-title">Payment Gateways</div></div>
+              <div class="section-body">
+                <div class="gateway-row on">
+                  <span class="gw-logo">🟦</span>
+                  <span class="gw-name">Yoco</span>
+                  <div class="toggle" style="background:var(--gold);">
+                    <div class="toggle-knob" style="left:18px;background:#080808;"></div>
+                  </div>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="gateway-row">
+                  <span class="gw-logo">🟣</span>
+                  <span class="gw-name">Stripe</span>
+                  <div class="toggle" style="background:var(--elevated);border:1px solid var(--border);">
+                    <div class="toggle-knob" style="left:2px;background:var(--muted);"></div>
+                  </div>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="gateway-row">
+                  <span class="gw-logo">🟢</span>
+                  <span class="gw-name">M-Pesa</span>
+                  <div class="toggle" style="background:var(--elevated);border:1px solid var(--border);">
+                    <div class="toggle-knob" style="left:2px;background:var(--muted);"></div>
+                  </div>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Bottom Nav -->
+          <div class="bottom-nav">
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="nav-lbl" style="color:var(--muted);">Home</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="nav-lbl" style="color:var(--muted);">Quick</div></div>
+            <div class="nav-center" style="background:var(--surface);border-color:rgba(201,168,76,0.3);color:var(--gold);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="nav-lbl" style="color:var(--muted);">Stock</div></div>
+            <div class="nav-item"><div class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><div class="nav-lbl" style="color:var(--gold);">Settings</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Settings Screen</div>
+    </div>
+
+  </div>
+
+  <!-- FILES DELIVERED -->
+  <div class="sect"><div class="sect-lbl">Files Delivered in Phase 1</div></div>
+  <div class="features">
+    <div class="feat-card"><div class="feat-num">01</div><div class="feat-title">Theme System</div><div class="feat-desc">Full CSS variable system, dark/light mode, Cormorant + DM Mono + Syne fonts, gold metallic palette.</div><div class="feat-files"><div class="feat-file">tailwind.config.js</div><div class="feat-file">src/index.css</div><div class="feat-file">src/context/ThemeContext.jsx</div></div></div>
+    <div class="feat-card"><div class="feat-num">02</div><div class="feat-title">Firebase Foundation</div><div class="feat-desc">Firebase init, Auth state management, multi-tenant Firestore structure, role-based user profiles.</div><div class="feat-files"><div class="feat-file">src/firebase.js</div><div class="feat-file">src/context/AuthContext.jsx</div><div class="feat-file">src/context/TenantContext.jsx</div></div></div>
+    <div class="feat-card"><div class="feat-num">03</div><div class="feat-title">Auth Screens</div><div class="feat-desc">Login + Register with particle background, error handling, show/hide password, protected routes.</div><div class="feat-files"><div class="feat-file">src/pages/auth/Login.jsx</div><div class="feat-file">src/pages/auth/Register.jsx</div></div></div>
+    <div class="feat-card"><div class="feat-num">04</div><div class="feat-title">Home Dashboard</div><div class="feat-desc">Live revenue display, today/week/month toggle, quick actions, real-time transaction feed from Firestore.</div><div class="feat-files"><div class="feat-file">src/pages/Home.jsx</div></div></div>
+    <div class="feat-card"><div class="feat-num">05</div><div class="feat-title">White-Label Settings</div><div class="feat-desc">Branding editor, gateway toggle cards (Yoco/Stripe/M-Pesa), VAT config, theme switcher, sign out.</div><div class="feat-files"><div class="feat-file">src/pages/Settings.jsx</div></div></div>
+    <div class="feat-card"><div class="feat-num">06</div><div class="feat-title">UI Components</div><div class="feat-desc">Gold particle canvas, mobile bottom nav, loading screen, placeholder screens for Phase 2/3 routes.</div><div class="feat-files"><div class="feat-file">src/components/ParticleCanvas.jsx</div><div class="feat-file">src/components/BottomNav.jsx</div><div class="feat-file">src/components/LoadingScreen.jsx</div></div></div>
+  </div>
+
+  <!-- NEXT STEPS -->
+  <div class="sect"><div class="sect-lbl">How to Install Phase 1</div></div>
+  <div class="next-box">
+    <div class="next-title">3 Steps to Go Live</div>
+    <p style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);line-height:1.8;">Copy the files into your project · Run the server · Register your first account</p>
+    <div class="next-steps">
+      <div class="next-step"><div class="step-num">01</div><span class="step-cmd">Copy files</span><div class="step-desc">Put each file into its matching folder in src/ — the structure matches exactly what you see in the setup guide.</div></div>
+      <div class="next-step"><div class="step-num">02</div><span class="step-cmd">npm run dev</span><div class="step-desc">Start the development server and open http://localhost:5173 in your browser.</div></div>
+      <div class="next-step"><div class="step-num">03</div><span class="step-cmd">Register</span><div class="step-desc">Click "Create one" on the login screen. Fill in your business name. You're in!</div></div>
+      <div class="next-step"><div class="step-num">04</div><span class="step-cmd">Phase 2</span><div class="step-desc">Come back here and say "Let's Build Phase 2" — Quick Sale + Yoco + signature + animated send.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Particle canvas for each phone screen
+function initParticles(canvasId, containerId, count) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const container = canvas.parentElement;
+  let w, h, particles = [];
+
+  function resize() {
+    w = canvas.width = container.offsetWidth;
+    h = canvas.height = container.offsetHeight;
+  }
+  resize();
+
+  function mkParticle(randomY) {
+    return {
+      x: Math.random() * w,
+      y: randomY ? Math.random() * h : h + 5,
+      size: Math.random() * 1.2 + 0.3,
+      vy: Math.random() * 0.4 + 0.15,
+      opacity: 0,
+      maxOp: Math.random() * 0.4 + 0.08,
+      life: 0,
+      maxLife: Math.random() * 250 + 120,
+    };
+  }
+
+  for (let i = 0; i < count; i++) particles.push(mkParticle(true));
+
+  function loop() {
+    ctx.clearRect(0, 0, w, h);
+    particles.forEach((p, i) => {
+      p.y -= p.vy; p.life++;
+      if (p.life < 30) p.opacity = Math.min(p.maxOp, p.opacity + p.maxOp / 30);
+      if (p.life > p.maxLife - 30) p.opacity = Math.max(0, p.opacity - p.maxOp / 30);
+      if (p.y < -5 || p.life >= p.maxLife) particles[i] = mkParticle(false);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201,168,76,${p.opacity})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+initParticles('c1', 'loginScreen', 25);
+initParticles('c2', 'homeScreen', 20);
+initParticles('c3', null, 15);
+</script>
+</body>
+</html>
