@@ -12,16 +12,10 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { friendlyError } from "../utils/authErrors";
 
 // Create the context
-const AuthContext = createContext(null);
-
-// Custom hook — use this in any component: const { user } = useAuth()
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
-};
+export const AuthContext = createContext(null);
 
 // The provider wraps your whole app and makes auth available everywhere
 export const AuthProvider = ({ children }) => {
@@ -140,20 +134,6 @@ export const AuthProvider = ({ children }) => {
 
     return unsubscribe; // Cleanup on unmount
   }, []);
-
-  // ─── Helper: human-readable error messages ───────────────────────
-  const friendlyError = (code) => {
-    const messages = {
-      "auth/user-not-found": "No account found with that email.",
-      "auth/wrong-password": "Incorrect password. Please try again.",
-      "auth/email-already-in-use": "An account with this email already exists.",
-      "auth/weak-password": "Password must be at least 6 characters.",
-      "auth/invalid-email": "Please enter a valid email address.",
-      "auth/too-many-requests": "Too many attempts. Please wait and try again.",
-      "auth/network-request-failed": "Network error. Check your connection.",
-    };
-    return messages[code] || "Something went wrong. Please try again.";
-  };
 
   const value = {
     user,
