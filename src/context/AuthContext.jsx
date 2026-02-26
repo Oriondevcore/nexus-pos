@@ -1,6 +1,4 @@
 // src/context/AuthContext.jsx
-// Manages user authentication state across the entire app
-
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
@@ -12,39 +10,48 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
-import { friendlyError } from "../utils/authErrors";
 
-// Create the context
-export const AuthContext = createContext(null);
+const AuthContext = createContext(null);
 
-// The provider wraps your whole app and makes auth available everywhere
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // Current user object
-  const [userDoc, setUserDoc] = useState(null); // Firestore user profile
-  const [loading, setLoading] = useState(true); // Auth still loading?
-  const [error, setError] = useState(null); // Auth errors
+  const [user, setUser] = useState(null);
+  const [userDoc, setUserDoc] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // ─── Register a new user ────────────────────────────────────────
+  const friendlyError = (code) => {
+    const messages = {
+      "auth/user-not-found": "No account found with that email.",
+      "auth/wrong-password": "Incorrect password. Please try again.",
+      "auth/invalid-credential": "Incorrect email or password.",
+      "auth/email-already-in-use": "An account with this email already exists.",
+      "auth/weak-password": "Password must be at least 6 characters.",
+      "auth/invalid-email": "Please enter a valid email address.",
+      "auth/too-many-requests": "Too many attempts. Please wait and try again.",
+      "auth/network-request-failed": "Network error. Check your connection.",
+    };
+    return messages[code] || "Something went wrong. Please try again.";
+  };
+
   const register = async (email, password, businessName, displayName) => {
     setError(null);
     try {
-      // Create Firebase Auth account
       const cred = await createUserWithEmailAndPassword(auth, email, password);
-
-      // Update display name
       await updateProfile(cred.user, { displayName });
-
-      // Create Firestore document for this user (their "tenant" profile)
-      const tenantId = cred.user.uid; // Each user IS their own tenant
-
       const userProfile = {
         uid: cred.user.uid,
-        tenantId,
+        tenantId: cred.user.uid,
         displayName,
         email,
         businessName: businessName || displayName,
-        role: "admin", // First user of a tenant is always admin
-        plan: "starter", // Default plan
+        role: "admin",
+        plan: "starter",
         theme: "dark",
         branding: {
           primaryColor: "#c9a84c",
@@ -53,7 +60,7 @@ export const AuthProvider = ({ children }) => {
           vatNumber: "",
           address: "",
           phone: "",
-          email: email,
+          email,
           tcText:
             "By signing, I agree to the terms and conditions of this transaction.",
           vatEnabled: true,
@@ -79,10 +86,8 @@ export const AuthProvider = ({ children }) => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-
-      await setDoc(doc(db, "tenants", tenantId), userProfile);
+      await setDoc(doc(db, "tenants", cred.user.uid), userProfile);
       setUserDoc(userProfile);
-
       return cred.user;
     } catch (err) {
       setError(friendlyError(err.code));
@@ -90,7 +95,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ─── Log in existing user ────────────────────────────────────────
   const login = async (email, password) => {
     setError(null);
     try {
@@ -102,28 +106,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ─── Log out ─────────────────────────────────────────────────────
   const logout = async () => {
     await signOut(auth);
     setUserDoc(null);
   };
-
-  // ─── Send password reset email ───────────────────────────────────
   const resetPassword = async (email) => {
     await sendPasswordResetEmail(auth, email);
   };
 
-  // ─── Listen for auth state changes (runs on app start) ──────────
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        // Load their tenant profile from Firestore
         try {
           const snap = await getDoc(doc(db, "tenants", firebaseUser.uid));
           if (snap.exists()) setUserDoc(snap.data());
         } catch {
-          // If no profile yet, it will be created on next login
+          /* loads on next action */
         }
       } else {
         setUser(null);
@@ -131,22 +130,25 @@ export const AuthProvider = ({ children }) => {
       }
       setLoading(false);
     });
-
-    return unsubscribe; // Cleanup on unmount
+    return unsubscribe;
   }, []);
 
-  const value = {
-    user,
-    userDoc,
-    loading,
-    error,
-    setError,
-    register,
-    login,
-    logout,
-    resetPassword,
-    isAuthenticated: !!user,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        userDoc,
+        loading,
+        error,
+        setError,
+        register,
+        login,
+        logout,
+        resetPassword,
+        isAuthenticated: !!user,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

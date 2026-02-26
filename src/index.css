@@ -70,4 +70,11 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
-
+/* Centre mobile app on desktop */
+#root {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+}
