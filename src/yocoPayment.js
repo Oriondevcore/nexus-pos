@@ -1,14 +1,14 @@
 /**
  * Firebase Cloud Function for Yoco Payment Processing
- * 
+ *
  * File location: functions/src/yocoPayment.js
- * 
+ *
  * This function:
  * - Receives payment requests from the client (without sensitive data)
  * - Processes Yoco payments server-side with the secret key
  * - Returns payment status to the client
  * - Keeps the secret key completely secure
- * 
+ *
  * Deploy with: firebase deploy --only functions
  */
 
@@ -21,7 +21,7 @@ admin.initializeApp();
 
 /**
  * Create a Yoco payment
- * 
+ *
  * Request body:
  * {
  *   amount: number (in cents),
@@ -38,7 +38,7 @@ exports.createYocoPayment = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",
-      "User must be authenticated"
+      "User must be authenticated",
     );
   }
 
@@ -49,7 +49,7 @@ exports.createYocoPayment = functions.https.onCall(async (data, context) => {
     if (!amount || !currency || !description) {
       throw new functions.https.HttpsError(
         "invalid-argument",
-        "Missing required fields: amount, currency, description"
+        "Missing required fields: amount, currency, description",
       );
     }
 
@@ -78,7 +78,7 @@ exports.createYocoPayment = functions.https.onCall(async (data, context) => {
           username: yocoSecretKey,
           password: "", // Yoco API uses basic auth with just the secret key
         },
-      }
+      },
     );
 
     // Log transaction (optional - store in Firestore)
@@ -106,78 +106,76 @@ exports.createYocoPayment = functions.https.onCall(async (data, context) => {
     // Don't expose sensitive error details to client
     throw new functions.https.HttpsError(
       "internal",
-      "Payment processing failed. Please try again."
+      "Payment processing failed. Please try again.",
     );
   }
 });
 
 /**
  * Get payment status
- * 
+ *
  * Request: { checkoutId: string }
  */
-exports.getYocoPaymentStatus = functions.https.onCall(
-  async (data, context) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        "unauthenticated",
-        "User must be authenticated"
-      );
-    }
-
-    try {
-      const { checkoutId } = data;
-
-      if (!checkoutId) {
-        throw new functions.https.HttpsError(
-          "invalid-argument",
-          "checkoutId is required"
-        );
-      }
-
-      const yocoSecretKey = process.env.YOCO_SECRET_KEY;
-
-      // Get payment status from Yoco
-      const yocoResponse = await axios.get(
-        `https://api.yoco.com/v1/checkouts/${checkoutId}`,
-        {
-          auth: {
-            username: yocoSecretKey,
-            password: "",
-          },
-        }
-      );
-
-      // Update transaction status in Firestore
-      const transactionQuery = await admin
-        .firestore()
-        .collection("transactions")
-        .where("yocoId", "==", checkoutId)
-        .where("userId", "==", context.auth.uid)
-        .limit(1)
-        .get();
-
-      if (!transactionQuery.empty) {
-        await transactionQuery.docs[0].ref.update({
-          status: yocoResponse.data.status,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-
-      return {
-        success: true,
-        status: yocoResponse.data.status,
-        paid: yocoResponse.data.status === "completed",
-      };
-    } catch (error) {
-      console.error("Payment status error:", error);
-      throw new functions.https.HttpsError(
-        "internal",
-        "Failed to fetch payment status"
-      );
-    }
+exports.getYocoPaymentStatus = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "User must be authenticated",
+    );
   }
-);
+
+  try {
+    const { checkoutId } = data;
+
+    if (!checkoutId) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "checkoutId is required",
+      );
+    }
+
+    const yocoSecretKey = process.env.YOCO_SECRET_KEY;
+
+    // Get payment status from Yoco
+    const yocoResponse = await axios.get(
+      `https://api.yoco.com/v1/checkouts/${checkoutId}`,
+      {
+        auth: {
+          username: yocoSecretKey,
+          password: "",
+        },
+      },
+    );
+
+    // Update transaction status in Firestore
+    const transactionQuery = await admin
+      .firestore()
+      .collection("transactions")
+      .where("yocoId", "==", checkoutId)
+      .where("userId", "==", context.auth.uid)
+      .limit(1)
+      .get();
+
+    if (!transactionQuery.empty) {
+      await transactionQuery.docs[0].ref.update({
+        status: yocoResponse.data.status,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return {
+      success: true,
+      status: yocoResponse.data.status,
+      paid: yocoResponse.data.status === "completed",
+    };
+  } catch (error) {
+    console.error("Payment status error:", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to fetch payment status",
+    );
+  }
+});
 
 /**
  * Webhook handler for Yoco payment notifications
